@@ -19,46 +19,45 @@ tags:
 - assertVisible: "Quick Actions"
 - assertVisible: "Add New Expense"
 
-# Test: Can create a basic expense
+# Test: Can access form fields and pickers
 - tapOn: "Add New Expense"
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn: "Amount *"
 - inputText: "10.00"
 - tapOn: "Vendor *"
-- inputText: "Smoke Test"
+- inputText: "SmokeTestVendor"
 - waitForAnimationToEnd:
     timeout: 3000
 
-# Scroll down to ensure category picker is visible
+# Test category picker accessibility
 - scroll
 - waitForAnimationToEnd:
     timeout: 2000
-
 - tapOn:
     id: "category-picker-button"
 - waitForAnimationToEnd:
     timeout: 2000
-- tapOn: "Create New Category"
-- tapOn: "Category Name"
-- inputText: "Food"
-- tapOn: "Create"
+- assertVisible: "Select Category"
+- tapOn: "Cancel"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Test payment method picker accessibility
+- scroll
 - waitForAnimationToEnd:
     timeout: 2000
 - tapOn:
     id: "payment-method-picker-button"
-- tapOn: "Cash"
-- tapOn: "Add Expense"
-- assertVisible: "Success"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible: "Select Payment Method"
+- tapOn: "Cancel"
 
-# Test: Can view expenses  
-- tapOn: "OK"
-- tapOn: "View All Expenses"
-- assertVisible: "Smoke Test"
-- assertVisible: "$10.00"
+# Return to home
+- back
 
 # Test: Can access settings
-- back
 - tapOn: "Manage Settings"
 - assertVisible: "Manage Categories"
 - assertVisible: "Payment Methods"

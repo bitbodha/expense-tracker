@@ -1,0 +1,31 @@
+# Debug Vendor Input Progressive
+# Test progressive input to find the exact breaking point
+
+appId: com.expensetracker
+
+---
+
+# Navigate to Add Expense
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "Add Expense"
+
+# Fill Amount field
+- tapOn: "Amount *"
+- inputText: "10.00"
+- assertVisible: "Add Expense"
+
+# Tap vendor field and progressively input more text
+- tapOn: "Vendor *"
+- inputText: "Smo"
+- assertVisible: "Add Expense"
+- inputText: "ke"
+- assertVisible: "Add Expense"
+- inputText: " Te"
+- assertVisible: "Add Expense"
+- inputText: "st"
+- assertVisible: "Add Expense"

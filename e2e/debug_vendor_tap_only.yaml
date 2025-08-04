@@ -1,0 +1,24 @@
+# Debug Vendor Tap Only
+# Test if just tapping the vendor field causes navigation
+
+appId: com.expensetracker
+
+---
+
+# Navigate to Add Expense
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "Add Expense"
+
+# Fill Amount field (this works fine)
+- tapOn: "Amount *"
+- inputText: "10.00"
+- assertVisible: "Add Expense"
+
+# Just tap the Vendor field without inputting anything
+- tapOn: "Vendor *"
+- assertVisible: "Add Expense"

@@ -1,0 +1,28 @@
+# Debug Vendor Input Step
+# Test the exact moment navigation happens during vendor input
+
+appId: com.expensetracker
+
+---
+
+# Navigate to Add Expense
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "Add Expense"
+
+# Fill Amount field
+- tapOn: "Amount *"
+- inputText: "10.00"
+- assertVisible: "Add Expense"
+
+# Tap vendor field
+- tapOn: "Vendor *"
+- assertVisible: "Add Expense"
+
+# Input a single character at a time to find the exact point of failure
+- inputText: "S"
+- assertVisible: "Add Expense"

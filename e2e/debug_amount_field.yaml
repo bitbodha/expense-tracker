@@ -1,0 +1,28 @@
+# Debug Amount Field
+# Test if the navigation issue also happens with Amount field
+
+appId: com.expensetracker
+
+---
+
+# Navigate to Add Expense
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "Add Expense"
+
+# Fill ONLY Amount field and see if navigation happens
+- tapOn: "Amount *"
+- assertVisible: "Add Expense"
+- inputText: "10.00"
+- assertVisible: "Add Expense"
+
+# Try to proceed without touching vendor field
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible: "Add Expense"
+- assertVisible: "Category *"

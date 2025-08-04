@@ -1,0 +1,22 @@
+# Debug Vendor No Space
+# Test with vendor name without spaces
+
+appId: com.expensetracker
+
+---
+
+# Navigate and test with vendor name without spaces
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: "Amount *"
+- inputText: "10.00"
+- tapOn: "Vendor *"
+- inputText: "SmokeTestVendor"
+- assertVisible: "Add Expense"
+- scroll
+- tapOn:
+    id: "category-picker-button"

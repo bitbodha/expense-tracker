@@ -1,0 +1,23 @@
+# Debug Category Picker Tap Test
+# Test different ways to tap the category picker
+
+appId: com.expensetracker
+
+---
+
+# Navigate to Add Expense screen
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Try tapping by resource-id
+- tapOn:
+    id: "category-picker-button"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Expect to see the category modal
+- assertVisible: "Select Category"

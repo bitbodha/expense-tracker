@@ -1,0 +1,263 @@
+# Test Data Fixtures for Maestro E2E Tests
+# This file contains reusable test data for various test scenarios
+
+# Test Categories
+categories:
+  food:
+    name: "Food & Dining"
+    icon: "🍕"
+    color: "#FF5722"
+    description: "Restaurants, groceries, takeout"
+  
+  transport:
+    name: "Transportation"
+    icon: "🚗"
+    color: "#2196F3"
+    description: "Gas, public transport, parking"
+  
+  entertainment:
+    name: "Entertainment"
+    icon: "🎬"
+    color: "#9C27B0"
+    description: "Movies, games, concerts"
+  
+  shopping:
+    name: "Shopping"
+    icon: "🛍️"
+    color: "#E91E63"
+    description: "Clothes, electronics, general shopping"
+  
+  health:
+    name: "Health & Fitness"
+    icon: "💊"
+    color: "#4CAF50"
+    description: "Medical, pharmacy, gym"
+
+# Test Payment Methods
+payment_methods:
+  credit_card:
+    name: "Test Credit Card"
+    type: "credit_card"
+    last_four: "1234"
+    color: "#1976D2"
+    icon: "💳"
+  
+  debit_card:
+    name: "Test Debit Card"
+    type: "debit_card"
+    last_four: "5678"
+    color: "#388E3C"
+    icon: "💳"
+  
+  cash:
+    name: "Cash"
+    type: "cash"
+    color: "#795548"
+    icon: "💵"
+  
+  digital_wallet:
+    name: "Digital Wallet"
+    type: "digital_wallet"
+    color: "#FF9800"
+    icon: "📱"
+
+# Test Currencies
+currencies:
+  usd:
+    code: "USD"
+    symbol: "$"
+    name: "US Dollar"
+  
+  eur:
+    code: "EUR"
+    symbol: "€"
+    name: "Euro"
+  
+  gbp:
+    code: "GBP"
+    symbol: "£"
+    name: "British Pound"
+  
+  jpy:
+    code: "JPY"
+    symbol: "¥"
+    name: "Japanese Yen"
+
+# Test Expenses
+expenses:
+  small_food:
+    amount: 12.50
+    vendor: "Quick Bite Cafe"
+    description: "Coffee and sandwich"
+    category: "food"
+    payment_method: "credit_card"
+    currency: "usd"
+    notes: "Breakfast on the go"
+  
+  medium_transport:
+    amount: 35.00
+    vendor: "Metro Transit"
+    description: "Monthly bus pass"
+    category: "transport"
+    payment_method: "debit_card"
+    currency: "usd"
+    notes: "Public transportation"
+  
+  large_shopping:
+    amount: 250.99
+    vendor: "Electronics Store"
+    description: "Wireless headphones"
+    category: "shopping"
+    payment_method: "credit_card"
+    currency: "usd"
+    notes: "Noise-cancelling headphones for work"
+  
+  recurring_subscription:
+    amount: 9.99
+    vendor: "Streaming Service"
+    description: "Monthly subscription"
+    category: "entertainment"
+    payment_method: "digital_wallet"
+    currency: "usd"
+    notes: "Video streaming service"
+
+# Test Tags
+tags:
+  business:
+    name: "Business"
+    color: "#607D8B"
+    description: "Work-related expenses"
+  
+  personal:
+    name: "Personal"
+    color: "#FF7043"
+    description: "Personal expenses"
+  
+  urgent:
+    name: "Urgent"
+    color: "#F44336"
+    description: "Urgent or emergency expenses"
+  
+  recurring:
+    name: "Recurring"
+    color: "#3F51B5"
+    description: "Monthly or regular expenses"
+  
+  tax_deductible:
+    name: "Tax Deductible"
+    color: "#8BC34A"
+    description: "Tax deductible business expenses"
+
+# Test Vendors (commonly used)
+vendors:
+  restaurants:
+    - "McDonald's"
+    - "Starbucks"
+    - "Pizza Hut"
+    - "Subway"
+    - "Local Diner"
+    - "Sushi Restaurant"
+  
+  grocery_stores:
+    - "Walmart"
+    - "Target"
+    - "Whole Foods"
+    - "Local Grocery"
+    - "Corner Store"
+  
+  gas_stations:
+    - "Shell"
+    - "Exxon"
+    - "BP"
+    - "Chevron"
+    - "Local Gas Station"
+  
+  online_services:
+    - "Amazon"
+    - "Netflix"
+    - "Spotify"
+    - "Google Services"
+    - "Microsoft Office"
+
+# Test User Preferences
+user_preferences:
+  default:
+    currency: "USD"
+    theme: "light"
+    language: "en"
+    date_format: "MMM dd, yyyy"
+    first_day_of_week: 0  # Sunday
+  
+  european:
+    currency: "EUR"
+    theme: "system"
+    language: "en"
+    date_format: "dd/MM/yyyy"
+    first_day_of_week: 1  # Monday
+  
+  dark_theme:
+    currency: "USD"
+    theme: "dark"
+    language: "en"
+    date_format: "yyyy-MM-dd"
+    first_day_of_week: 0  # Sunday
+
+# Test Scenarios for Complex Workflows
+scenarios:
+  new_user_onboarding:
+    description: "Fresh app install, no existing data"
+    setup_steps:
+      - "Clear app data"
+      - "Launch app for first time"
+      - "Verify default categories exist"
+      - "Verify default currency is USD"
+  
+  existing_user_with_data:
+    description: "User with existing expenses and customizations"
+    setup_steps:
+      - "Create 5 test expenses"
+      - "Create 2 custom categories"
+      - "Set EUR as default currency"
+      - "Change theme to dark"
+  
+  power_user_scenario:
+    description: "User with extensive data and customizations"
+    setup_steps:
+      - "Create 50+ test expenses across 6 months"
+      - "Create 10 custom categories with subcategories"
+      - "Create 5 payment methods"
+      - "Create 10 frequently used tags"
+      - "Set up multiple currencies"
+      - "Configure all user preferences"
+
+# Performance Test Data
+performance_data:
+  large_dataset:
+    expense_count: 1000
+    category_count: 20
+    payment_method_count: 10
+    tag_count: 30
+    time_range: "12 months"
+  
+  stress_test:
+    expense_count: 5000
+    category_count: 50
+    payment_method_count: 25
+    tag_count: 100
+    time_range: "24 months"
+
+# Error Test Cases
+error_scenarios:
+  validation_errors:
+    empty_vendor: ""
+    zero_amount: 0
+    negative_amount: -10.50
+    invalid_date: "invalid-date"
+    missing_category: null
+  
+  edge_cases:
+    very_long_vendor: "A".repeat(255)
+    very_large_amount: 999999999.99
+    special_characters: "Café München & Sons™ 中文 العربية"
+    future_date: "2030-12-31"
+    ancient_date: "1900-01-01"

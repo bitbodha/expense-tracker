@@ -532,7 +532,7 @@ describe('DatabaseManager', () => {
     });
   });
 
-  describe('error handling', () => {
+  describe('error handling and edge cases', () => {
     beforeEach(() => {
       (dbManager as any).db = mockDatabase;
     });
@@ -554,6 +554,437 @@ describe('DatabaseManager', () => {
 
       await expect(dbManager.getCategories())
         .rejects.toThrow('Database not initialized');
+    });
+
+    it('should handle concurrent database operations', async () => {
+      // Mock sequential calls that might overlap
+      let callCount = 0;
+      mockDatabase.executeSql.mockImplementation(() => {
+        callCount++;
+        return new Promise(resolve => {
+          setTimeout(() => resolve([{ rows: { length: 0 } }]), 10);
+        });
+      });
+
+      const promises = [
+        dbManager.createExpense({
+          amount: 10,
+          vendor: 'Vendor1',
+          category: { id: 'cat1' } as ExpenseCategory,
+          date: new Date(),
+          currency: { code: 'USD' } as Currency
+        }),
+        dbManager.createExpense({
+          amount: 20,
+          vendor: 'Vendor2',
+          category: { id: 'cat2' } as ExpenseCategory,
+          date: new Date(),
+          currency: { code: 'USD' } as Currency
+        })
+      ];
+
+      await Promise.all(promises);
+      expect(callCount).toBeGreaterThanOrEqual(4); // At least 2 vendor operations + 2 expense creations
+    });
+
+    it('should handle SQL injection attempts', async () => {
+      const maliciousData = {
+        amount: 10,
+        vendor: "'; DROP TABLE expenses; --",
+        description: "<script>alert('xss')</script>",
+        category: { id: 'cat1' } as ExpenseCategory,
+        date: new Date(),
+        currency: { code: 'USD' } as Currency,
+        notes: "'; UPDATE expenses SET amount = 999999; --"
+      };
+
+      mockDatabase.executeSql.mockResolvedValue([{ rows: { length: 0 } }]);
+
+      await dbManager.createExpense(maliciousData);
+
+      // Verify that parameterized queries were used
+      const createExpenseCall = mockDatabase.executeSql.mock.calls.find(call => 
+        call[0].includes('INSERT INTO expenses')
+      );
+      expect(createExpenseCall[0]).toContain('?'); // Parameterized query
+      expect(createExpenseCall[1]).toContain(maliciousData.vendor); // Data passed as parameters
+    });
+
+    it('should handle very large datasets', async () => {
+      // Mock a large number of expenses
+      const largeRowCount = 10000;
+      const mockRows = {
+        length: largeRowCount,
+        item: jest.fn().mockImplementation((index) => ({
+          id: `exp${index}`,
+          amount: Math.random() * 1000,
+          vendor: `Vendor ${index}`,
+          category_id: 'cat1',
+          category_name: 'Food',
+          category_color: '#FF0000',
+          category_icon: '🍕',
+          date: new Date().toISOString(),
+          currency_code: 'USD',
+          currency_symbol: '$',
+          currency_name: 'US Dollar',
+          payment_method_id: null,
+          location: null,
+          notes: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }))
+      };
+
+      mockDatabase.executeSql
+        .mockResolvedValueOnce([{ rows: mockRows }]) // Main query
+        .mockResolvedValue([{ rows: { length: 0 } }]); // Tag queries
+
+      const expenses = await dbManager.getExpenses();
+      expect(expenses).toHaveLength(largeRowCount);
+      expect(mockRows.item).toHaveBeenCalledTimes(largeRowCount);
+    });
+
+    it('should handle invalid date formats', async () => {
+      const invalidDateData = {
+        amount: 10,
+        vendor: 'Test Vendor',
+        category: { id: 'cat1' } as ExpenseCategory,
+        date: new Date('invalid-date'),
+        currency: { code: 'USD' } as Currency
+      };
+
+      mockDatabase.executeSql.mockResolvedValue([{ rows: { length: 0 } }]);
+
+      // Should reject invalid dates
+      await expect(dbManager.createExpense(invalidDateData)).rejects.toThrow();
+    });
+
+    it('should handle Unicode and special characters', async () => {
+      const unicodeData = {
+        amount: 25.50,
+        vendor: '🏪 Café München & Sons™',
+        description: 'Müller\'s "Special" Coffee ☕ 中文 العربية',
+        category: { id: 'cat1' } as ExpenseCategory,
+        date: new Date(),
+        currency: { code: 'USD' } as Currency,
+        location: 'Zürich, 🇨🇭 Switzerland',
+        notes: 'Notes with \"quotes\" and \nline breaks\ttabs'
+      };
+
+      mockDatabase.executeSql.mockResolvedValue([{ rows: { length: 0 } }]);
+
+      const id = await dbManager.createExpense(unicodeData);
+      expect(typeof id).toBe('string');
+
+      // Verify the data was passed correctly
+      const createCall = mockDatabase.executeSql.mock.calls.find(call => 
+        call[0].includes('INSERT INTO expenses')
+      );
+      expect(createCall[1]).toContain(unicodeData.vendor);
+      expect(createCall[1]).toContain(unicodeData.description);
+    });
+
+    it('should handle database close during operations', async () => {
+      mockDatabase.executeSql.mockRejectedValue(new Error('database is closed'));
+
+      await expect(dbManager.getExpenses()).rejects.toThrow('database is closed');
+    });
+
+    it('should handle memory pressure scenarios', async () => {
+      // Simulate low memory by making operations take longer
+      let slowCallCount = 0;
+      mockDatabase.executeSql.mockImplementation(() => {
+        slowCallCount++;
+        return new Promise((resolve, reject) => {
+          if (slowCallCount > 5) {
+            reject(new Error('out of memory'));
+          } else {
+            setTimeout(() => resolve([{ rows: { length: 0 } }]), 100);
+          }
+        });
+      });
+
+      // Try multiple operations that should eventually fail
+      const promises = Array.from({ length: 10 }, (_, i) => 
+        dbManager.createExpense({
+          amount: i,
+          vendor: `Vendor ${i}`,
+          category: { id: 'cat1' } as ExpenseCategory,
+          date: new Date(),
+          currency: { code: 'USD' } as Currency
+        })
+      );
+
+      const results = await Promise.allSettled(promises);
+      const failures = results.filter(r => r.status === 'rejected');
+      expect(failures.length).toBeGreaterThan(0);
+    });
+
+    it('should handle network interruption during operations', async () => {
+      // Simulate network/connection interruption
+      // First createExpense call: vendor check + vendor insert + expense insert = 3 calls
+      mockDatabase.executeSql
+        .mockResolvedValueOnce([{ rows: { length: 0 } }]) // First vendor check (not found)
+        .mockResolvedValueOnce([{ rows: { length: 0 } }]) // First vendor insert
+        .mockResolvedValueOnce([{ rows: { length: 0 } }]) // First expense insert
+        .mockRejectedValueOnce(new Error('network connection lost')); // Second vendor check fails
+
+      // First operation should succeed
+      const firstId = await dbManager.createExpense({
+        amount: 10,
+        vendor: 'Test',
+        category: { id: 'cat1' } as ExpenseCategory,
+        date: new Date(),
+        currency: { code: 'USD' } as Currency
+      });
+      expect(typeof firstId).toBe('string');
+
+      // Second operation should fail on vendor check
+      await expect(dbManager.createExpense({
+        amount: 20,
+        vendor: 'Test2',
+        category: { id: 'cat1' } as ExpenseCategory,
+        date: new Date(),
+        currency: { code: 'USD' } as Currency
+      })).rejects.toThrow('network connection lost');
+    });
+  });
+
+  describe('database initialization edge cases', () => {
+    it('should handle partial table creation failure', async () => {
+      let createTableCallCount = 0;
+      mockDatabase.executeSql.mockImplementation((sql) => {
+        createTableCallCount++;
+        if (sql.includes('CREATE TABLE') && createTableCallCount === 3) {
+          throw new Error('Table creation failed');
+        }
+        return Promise.resolve([{ rows: { length: 0 } }]);
+      });
+
+      await expect(dbManager.initialize()).rejects.toThrow();
+    });
+
+    it('should handle index creation failures gracefully', async () => {
+      // Mock table creation to succeed but index creation to fail
+      mockDatabase.executeSql.mockImplementation((sql) => {
+        if (sql.includes('CREATE INDEX')) {
+          throw new Error('Index creation failed');
+        }
+        return Promise.resolve([{ rows: { length: 0 } }]);
+      });
+
+      // Should not throw, as indexes are not critical
+      await expect(dbManager.initialize()).resolves.toBeUndefined();
+    });
+
+    it('should handle database file corruption', async () => {
+      (SQLite.openDatabase as jest.Mock).mockRejectedValue(new Error('database disk image is malformed'));
+
+      await expect(dbManager.initialize()).rejects.toThrow('database disk image is malformed');
+    });
+
+    it('should handle insufficient storage space', async () => {
+      (SQLite.openDatabase as jest.Mock).mockRejectedValue(new Error('disk I/O error'));
+
+      await expect(dbManager.initialize()).rejects.toThrow('disk I/O error');
+    });
+  });
+
+  describe('category tree operations edge cases', () => {
+    beforeEach(() => {
+      (dbManager as any).db = mockDatabase;
+    });
+
+    it('should prevent circular category references', async () => {
+      // Mock isDescendantOf to return true (circular reference detected)
+      mockDatabase.executeSql.mockResolvedValue([{ rows: { length: 1 } }]);
+
+      await expect(dbManager.moveCategoryToParent('cat1', 'cat2'))
+        .rejects.toThrow('Cannot move category to its own descendant');
+    });
+
+    it('should handle deep category nesting', async () => {
+      const categories = Array.from({ length: 50 }, (_, i) => ({
+        id: `cat${i}`,
+        name: `Category ${i}`,
+        color: '#FF0000',
+        icon: '📁',
+        parent_id: i > 0 ? `cat${i - 1}` : null
+      }));
+
+      mockDatabase.executeSql.mockResolvedValue([{
+        rows: {
+          length: categories.length,
+          item: jest.fn().mockImplementation((index) => categories[index])
+        }
+      }]);
+
+      const result = await dbManager.getCategories();
+      expect(result).toHaveLength(50);
+    });
+  });
+
+  describe('vendor operations edge cases', () => {
+    beforeEach(() => {
+      (dbManager as any).db = mockDatabase;
+    });
+
+    it('should handle vendor name deduplication', async () => {
+      // Mock existing vendor found
+      mockDatabase.executeSql
+        .mockResolvedValueOnce([{ 
+          rows: { 
+            length: 1, 
+            item: jest.fn().mockReturnValue({ id: 'vendor1', usage_count: 5 })
+          }
+        }])
+        .mockResolvedValueOnce([{ rows: { length: 0 } }]); // Update query
+
+      await dbManager.createOrUpdateVendor('Existing Vendor');
+
+      // Should call UPDATE instead of INSERT
+      expect(mockDatabase.executeSql).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE vendors'),
+        expect.arrayContaining([6]) // usage_count + 1
+      );
+    });
+
+    it('should handle case-insensitive vendor search', async () => {
+      mockDatabase.executeSql.mockResolvedValue([{
+        rows: {
+          length: 2,
+          item: jest.fn()
+            .mockReturnValueOnce({ name: 'Starbucks' })
+            .mockReturnValueOnce({ name: 'STARBUCKS COFFEE' })
+        }
+      }]);
+
+      const vendors = await dbManager.searchVendors('STAR');
+      expect(vendors).toHaveLength(2);
+      expect(mockDatabase.executeSql).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE name LIKE ?'),
+        expect.arrayContaining(['%STAR%', 10]) // includes limit parameter
+      );
+    });
+  });
+
+  describe('transaction and data integrity', () => {
+    beforeEach(() => {
+      (dbManager as any).db = mockDatabase;
+    });
+
+    it('should handle foreign key constraint violations', async () => {
+      mockDatabase.executeSql.mockRejectedValue(
+        new Error('FOREIGN KEY constraint failed')
+      );
+
+      await expect(dbManager.createExpense({
+        amount: 10,
+        vendor: 'Test',
+        category: { id: 'nonexistent-category' } as ExpenseCategory,
+        date: new Date(),
+        currency: { code: 'USD' } as Currency
+      })).rejects.toThrow('FOREIGN KEY constraint failed');
+    });
+
+    it('should handle duplicate key violations', async () => {
+      mockDatabase.executeSql.mockRejectedValue(
+        new Error('UNIQUE constraint failed')
+      );
+
+      await expect(dbManager.createCategory({
+        name: 'Duplicate Category',
+        color: '#FF0000',
+        icon: '📁'
+      })).rejects.toThrow('UNIQUE constraint failed');
+    });
+
+    it('should handle check constraint violations', async () => {
+      mockDatabase.executeSql.mockRejectedValue(
+        new Error('CHECK constraint failed')
+      );
+
+      // This should fail due to negative amount check constraint
+      await expect(dbManager.createExpense({
+        amount: -10,
+        vendor: 'Test',
+        category: { id: 'cat1' } as ExpenseCategory,
+        date: new Date(),
+        currency: { code: 'USD' } as Currency
+      })).rejects.toThrow('CHECK constraint failed');
+    });
+  });
+
+  describe('performance and optimization', () => {
+    beforeEach(() => {
+      (dbManager as any).db = mockDatabase;
+    });
+
+    it('should handle pagination efficiently', async () => {
+      const totalExpenses = 1000;
+      const pageSize = 50;
+
+      const mockRows = {
+        length: pageSize,
+        item: jest.fn().mockImplementation((index) => ({
+          id: `exp${index}`,
+          amount: 10,
+          vendor: 'Test',
+          category_id: 'cat1',
+          category_name: 'Food',
+          category_color: '#FF0000',
+          category_icon: '🍕',
+          date: new Date().toISOString(),
+          currency_code: 'USD',
+          currency_symbol: '$',
+          currency_name: 'US Dollar',
+          payment_method_id: null,
+          location: null,
+          notes: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }))
+      };
+
+      // First call: main expense query
+      mockDatabase.executeSql.mockResolvedValueOnce([{ rows: mockRows }]);
+      // Subsequent calls: tag queries for each expense (all return empty)
+      for (let i = 0; i < pageSize; i++) {
+        mockDatabase.executeSql.mockResolvedValueOnce([{ rows: { length: 0 } }]);
+      }
+
+      const expenses = await dbManager.getExpenses(undefined, pageSize, 100);
+      
+      expect(expenses).toHaveLength(pageSize);
+      expect(mockDatabase.executeSql).toHaveBeenCalledWith(
+        expect.stringContaining('LIMIT ? OFFSET ?'),
+        expect.arrayContaining([pageSize, 100])
+      );
+    });
+
+    it('should handle complex filter queries', async () => {
+      const complexFilter: ExpenseFilter = {
+        categories: ['cat1', 'cat2', 'cat3'],
+        dateRange: {
+          startDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31')
+        },
+        minAmount: 10,
+        maxAmount: 1000,
+        searchText: 'coffee OR restaurant'
+      };
+
+      mockDatabase.executeSql.mockResolvedValue([{ rows: { length: 0 } }]);
+
+      await dbManager.getExpenses(complexFilter);
+
+      const queryCall = mockDatabase.executeSql.mock.calls[0];
+      expect(queryCall[0]).toContain('WHERE');
+      expect(queryCall[0]).toContain('category_id IN');
+      expect(queryCall[0]).toContain('date >= ? AND e.date <= ?');
+      expect(queryCall[0]).toContain('amount >= ?');
+      expect(queryCall[0]).toContain('amount <= ?');
+      expect(queryCall[0]).toContain('LIKE ?');
     });
   });
 });

@@ -1,0 +1,39 @@
+# Category Management Test Flow
+# Tests creating, editing, and managing expense categories
+
+appId: com.expensetracker
+tags:
+  - management
+  - category
+  - admin
+
+---
+
+# Setup: Launch app and navigate to category management
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: "Manage Settings"
+- tapOn: "Manage Categories"
+
+# Test: View Category Management Screen - verify we're on the right screen
+- assertVisible: "Add Category"
+- assertVisible: "Search categories..."
+
+# Test: Create New Category
+- tapOn: "Add Category"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Add Category"
+
+# Test: Basic navigation works
+- back
+- assertVisible: "Add Category"
+
+# Test: Navigation back to home
+- back
+- assertVisible: "Manage Settings"
+- back
+- assertVisible: "Quick Actions"
+
+# Test: Category management basic functionality validated

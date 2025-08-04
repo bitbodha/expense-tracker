@@ -1,0 +1,25 @@
+# Debug Without Animation Waits
+# Test without waiting for animations to see if timing is the issue
+
+appId: com.expensetracker
+
+---
+
+# Navigate to Add Expense quickly
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# Fill form quickly without extra waits
+- tapOn: "Amount *"
+- inputText: "10.00"
+- tapOn: "Vendor *"
+- inputText: "Smoke Test"
+
+# Immediately try to access category picker
+- scroll
+- tapOn:
+    id: "category-picker-button"

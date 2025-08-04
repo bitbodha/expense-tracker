@@ -23,7 +23,11 @@
     "deps:update": "ncu --workspaces --root -u && rm -rf packages/*/node_modules && npm install",
     "deps:check-external": "ncu --workspaces --root --reject '@expense-tracker/*'",
     "deps:update-external": "ncu --workspaces --root --reject '@expense-tracker/*' -u && rm -rf packages/*/node_modules && npm install",
-    "deps:interactive": "ncu --workspaces --root --interactive"
+    "deps:interactive": "ncu --workspaces --root --interactive",
+    "e2e:smoke": "cd e2e && maestro test --include-tags smoke maestro/flows/",
+    "e2e:core": "cd e2e && maestro test --include-tags core maestro/flows/",
+    "e2e:all": "cd e2e && maestro test maestro/flows/",
+    "e2e:reports": "cd e2e && maestro test --format html,junit --output reports/ maestro/flows/"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

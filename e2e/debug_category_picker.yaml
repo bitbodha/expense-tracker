@@ -1,0 +1,17 @@
+# Debug Category Picker Test
+# Simple test to navigate to Add Expense and check category picker
+
+appId: com.expensetracker
+
+---
+
+# Launch and navigate to Add Expense screen
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Stop here to examine the UI
+- assertVisible: "Add Expense"

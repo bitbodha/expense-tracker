@@ -141,7 +141,11 @@ const CategoryManagementScreen: React.FC = () => {
 
           {hasChildren && isExpanded && (
             <View>
-              {renderCategoryTree(node.children, depth + 1)}
+              {renderCategoryTree(node.children, depth + 1).map((child, index) => (
+                <React.Fragment key={`child-${category.id}-${index}`}>
+                  {child}
+                </React.Fragment>
+              ))}
             </View>
           )}
         </View>

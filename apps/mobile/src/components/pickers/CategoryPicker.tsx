@@ -134,52 +134,48 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      <ListItem
+      <TouchableOpacity
         onPress={() => setIsVisible(true)}
-        containerStyle={styles.pickerButton}
+        style={styles.pickerButton}
+        testID="category-picker-button"
+        accessibilityLabel={selectedCategory ? selectedCategory.name : placeholder}
       >
-        {allowMultiple ? (
-          selectedCategories.length > 0 ? (
-            <ListItem.Content>
-              <ListItem.Title style={styles.selectedText}>
+        <View style={styles.pickerContent}>
+          {allowMultiple ? (
+            selectedCategories.length > 0 ? (
+              <Text style={styles.selectedText}>
                 {selectedCategories.length === 1 
                   ? selectedCategories[0].name
                   : `${selectedCategories.length} categories selected`
                 }
-              </ListItem.Title>
-            </ListItem.Content>
-          ) : (
-            <ListItem.Content>
-              <ListItem.Title style={styles.placeholderText}>
+              </Text>
+            ) : (
+              <Text style={styles.placeholderText} testID="category-picker-placeholder">
                 {placeholder}
-              </ListItem.Title>
-            </ListItem.Content>
-          )
-        ) : (
-          selectedCategory ? (
-            <>
-              <Text style={styles.selectedIcon}>{selectedCategory.icon || '📁'}</Text>
-              <ListItem.Content>
-                <ListItem.Title style={styles.selectedText}>
+              </Text>
+            )
+          ) : (
+            selectedCategory ? (
+              <View style={styles.selectedContent}>
+                <Text style={styles.selectedIcon}>{selectedCategory.icon || '📁'}</Text>
+                <Text style={styles.selectedText}>
                   {selectedCategory.name}
-                </ListItem.Title>
-              </ListItem.Content>
-            </>
-          ) : (
-            <ListItem.Content>
-              <ListItem.Title style={styles.placeholderText}>
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.placeholderText} testID="category-picker-placeholder">
                 {placeholder}
-              </ListItem.Title>
-            </ListItem.Content>
-          )
-        )}
-        <Icon
-          name="chevron-down"
-          type="feather"
-          size={20}
-          color="#8E8E93"
-        />
-      </ListItem>
+              </Text>
+            )
+          )}
+          <Icon
+            name="chevron-down"
+            type="feather"
+            size={20}
+            color="#8E8E93"
+          />
+        </View>
+      </TouchableOpacity>
 
       <Modal
         visible={isVisible}
@@ -703,6 +699,18 @@ const styles = StyleSheet.create({
   selectedColorButton: {
     borderWidth: 3,
     borderColor: '#333',
+  },
+  pickerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  selectedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
 });
 

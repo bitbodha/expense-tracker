@@ -1,0 +1,77 @@
+# Smoke Test Suite - Quick Validation
+# Essential tests that verify core app functionality is working
+
+appId: com.expensetracker
+tags:
+  - smoke
+  - critical
+  - quick
+
+---
+
+# Test: App launches and initializes
+- launchApp
+- assertVisible: "Expense Tracker"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Test: Core navigation works
+- assertVisible: "Quick Actions"
+- assertVisible: "Add New Expense"
+
+# Test: Can create a basic expense
+- tapOn: "Add New Expense"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: "Amount *"
+- inputText: "10.00"
+- tapOn: "Vendor *"
+- inputText: "Smoke Test"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Scroll down to ensure category picker is visible
+- scroll
+- waitForAnimationToEnd:
+    timeout: 2000
+
+- tapOn:
+    id: "category-picker-button"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn: "Create New Category"
+- tapOn: "Category Name"
+- inputText: "Food"
+- tapOn: "Create"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "payment-method-picker-button"
+- tapOn: "Cash"
+- tapOn: "Add Expense"
+- assertVisible: "Success"
+
+# Test: Can view expenses  
+- tapOn: "OK"
+- tapOn: "View All Expenses"
+- assertVisible: "Smoke Test"
+- assertVisible: "$10.00"
+
+# Test: Can access settings
+- back
+- tapOn: "Manage Settings"
+- assertVisible: "Manage Categories"
+- assertVisible: "Payment Methods"
+- assertVisible: "Tags"
+
+# Test: Navigation works
+- tapOn: "Manage Categories"
+- assertVisible: "Manage Categories"
+
+# Return to home
+- back
+- back
+- assertVisible: "Quick Actions"
+
+# Test: App is stable
+- assertVisible: "Expense Tracker"

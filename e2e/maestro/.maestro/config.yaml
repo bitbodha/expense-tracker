@@ -1,0 +1,37 @@
+# Maestro Configuration for Expense Tracker E2E Tests
+# This file contains global configuration for all Maestro test flows
+
+# App Configuration
+appId: com.expensetracker  # Update this to match your actual app ID
+
+# Test Configuration
+includeTags:
+  - core
+  - smoke
+  - regression
+
+# Default timeouts (in milliseconds)
+timeouts:
+  default: 30000
+  long: 60000
+  short: 10000
+
+# Environment variables
+env:
+  TEST_ENV: e2e
+  DEBUG_MODE: false
+
+# Platform-specific settings
+android:
+  # Android-specific configuration
+  clearAppData: true
+  
+ios:
+  # iOS-specific configuration
+  clearAppData: true
+
+# Reporting
+reports:
+  html: true
+  junit: true
+  outputDir: ../reports

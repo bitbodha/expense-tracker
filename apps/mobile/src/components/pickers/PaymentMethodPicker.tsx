@@ -177,58 +177,56 @@ const PaymentMethodPicker: React.FC<PaymentMethodPickerProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      <ListItem
+      <TouchableOpacity
         onPress={() => setIsVisible(true)}
-        containerStyle={styles.pickerButton}
+        style={styles.pickerButton}
+        testID="payment-method-picker-button"
+        accessibilityLabel={selectedPaymentMethod ? selectedPaymentMethod.name : placeholder}
       >
-        {allowMultiple ? (
-          selectedPaymentMethods.length > 0 ? (
-            <ListItem.Content>
-              <ListItem.Title style={styles.selectedText}>
+        <View style={styles.pickerContent}>
+          {allowMultiple ? (
+            selectedPaymentMethods.length > 0 ? (
+              <Text style={styles.selectedText}>
                 {selectedPaymentMethods.length === 1 
                   ? selectedPaymentMethods[0].name
                   : `${selectedPaymentMethods.length} payment methods selected`
                 }
-              </ListItem.Title>
-            </ListItem.Content>
-          ) : (
-            <ListItem.Content>
-              <ListItem.Title style={styles.placeholderText}>
-                {placeholder}
-              </ListItem.Title>
-            </ListItem.Content>
-          )
-        ) : (
-          selectedPaymentMethod ? (
-            <>
-              <Text style={styles.selectedIcon}>
-                {getPaymentMethodIcon(selectedPaymentMethod.type)}
               </Text>
-              <ListItem.Content>
-                <ListItem.Title style={styles.selectedText}>
-                  {selectedPaymentMethod.name}
-                </ListItem.Title>
-                <ListItem.Subtitle style={styles.selectedSubtext}>
-                  {getPaymentMethodTypeName(selectedPaymentMethod.type)}
-                  {selectedPaymentMethod.lastFourDigits && ` •••• ${selectedPaymentMethod.lastFourDigits}`}
-                </ListItem.Subtitle>
-              </ListItem.Content>
-            </>
-          ) : (
-            <ListItem.Content>
-              <ListItem.Title style={styles.placeholderText}>
+            ) : (
+              <Text style={styles.placeholderText} testID="payment-method-picker-placeholder">
                 {placeholder}
-              </ListItem.Title>
-            </ListItem.Content>
-          )
-        )}
-        <Icon
-          name="chevron-down"
-          type="feather"
-          size={20}
-          color="#8E8E93"
-        />
-      </ListItem>
+              </Text>
+            )
+          ) : (
+            selectedPaymentMethod ? (
+              <View style={styles.selectedContent}>
+                <Text style={styles.selectedIcon}>
+                  {getPaymentMethodIcon(selectedPaymentMethod.type)}
+                </Text>
+                <View style={styles.selectedTextContainer}>
+                  <Text style={styles.selectedText}>
+                    {selectedPaymentMethod.name}
+                  </Text>
+                  <Text style={styles.selectedSubtext}>
+                    {getPaymentMethodTypeName(selectedPaymentMethod.type)}
+                    {selectedPaymentMethod.lastFourDigits && ` •••• ${selectedPaymentMethod.lastFourDigits}`}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.placeholderText} testID="payment-method-picker-placeholder">
+                {placeholder}
+              </Text>
+            )
+          )}
+          <Icon
+            name="chevron-down"
+            type="feather"
+            size={20}
+            color="#8E8E93"
+          />
+        </View>
+      </TouchableOpacity>
 
       <Modal
         visible={isVisible}
@@ -709,6 +707,21 @@ const styles = StyleSheet.create({
   selectedColorButton: {
     borderWidth: 3,
     borderColor: '#333',
+  },
+  pickerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  selectedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  selectedTextContainer: {
+    flex: 1,
   },
 });
 

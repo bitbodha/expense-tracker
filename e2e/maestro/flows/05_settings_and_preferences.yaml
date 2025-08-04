@@ -1,0 +1,36 @@
+# Settings and Preferences Test Flow
+# Tests user settings, preferences, and app configuration
+
+appId: com.expensetracker
+tags:
+  - settings
+  - preferences
+  - configuration
+
+---
+
+# Setup: Launch app and navigate to management area
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: "Manage Settings"
+
+# Test: View Management Settings Options
+- assertVisible: "Manage Categories"
+- assertVisible: "Payment Methods"
+- assertVisible: "Tags"
+
+# Test: Navigate through management options
+- tapOn: "Payment Methods"
+- assertVisible: "Add Payment Method"
+- back
+
+- tapOn: "Tags"  
+- assertVisible: "Add Tag"
+- back
+
+# Test: Return to home
+- back
+- assertVisible: "Quick Actions"
+
+# Test: Basic settings/management navigation functionality validated

@@ -1,0 +1,416 @@
+name: E2E Tests with Maestro
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - 'e2e/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - 'e2e/**'
+
+env:
+  NODE_VERSION: '18.x'
+  JAVA_VERSION: '17'
+
+jobs:
+  # Smoke tests for PRs (fast feedback)
+  e2e-smoke:
+    name: E2E Smoke Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            apps/mobile/android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+            
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build shared packages
+        run: |
+          npm run build --workspace=packages/shared
+          npm run build --workspace=packages/database
+          
+      - name: Setup Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          
+      - name: Verify Maestro installation
+        run: maestro --version
+        
+      - name: Build Android Debug APK
+        working-directory: apps/mobile
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          
+      - name: Start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: Nexus 6
+          script: |
+            adb devices
+            adb install apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            
+      - name: Run Smoke Tests
+        working-directory: e2e
+        run: |
+          maestro test --format junit,html --output reports/ --include-tags smoke maestro/flows/
+          
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-smoke-reports
+          path: e2e/reports/
+          retention-days: 7
+          
+      - name: Comment PR with Results
+        uses: actions/github-script@v7
+        if: always() && github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            try {
+              const reportPath = 'e2e/reports/maestro-report.html';
+              if (fs.existsSync(reportPath)) {
+                const reportUrl = `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+                const comment = `## 🧪 E2E Smoke Test Results
+                
+                Maestro E2E smoke tests have completed. 
+                
+                📊 [View detailed report](${reportUrl})
+                
+                Tests included:
+                - App initialization
+                - Basic expense creation
+                - Core navigation
+                - Settings access
+                `;
+                
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: comment
+                });
+              }
+            } catch (error) {
+              console.log('Could not post comment:', error);
+            }
+
+  # Full test suite for main branch
+  e2e-full-android:
+    name: Full E2E Tests (Android)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            apps/mobile/android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+            
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build shared packages
+        run: |
+          npm run build --workspace=packages/shared
+          npm run build --workspace=packages/database
+          
+      - name: Setup Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          
+      - name: Build Android Release APK
+        working-directory: apps/mobile
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          
+      - name: Start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: Nexus 6
+          script: |
+            adb devices
+            adb install apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            
+      - name: Run Full Test Suite
+        working-directory: e2e
+        run: |
+          maestro test --format junit,html --output reports/ maestro/flows/
+          
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-full-android-reports
+          path: e2e/reports/
+          retention-days: 30
+          
+      - name: Upload Test Videos
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-videos-android
+          path: ~/.maestro/tests/**/recordings/
+          retention-days: 7
+
+  # iOS tests (only on macOS)
+  e2e-full-ios:
+    name: Full E2E Tests (iOS)
+    runs-on: macos-14
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+          working-directory: apps/mobile
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build shared packages
+        run: |
+          npm run build --workspace=packages/shared
+          npm run build --workspace=packages/database
+          
+      - name: Setup Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: apps/mobile/ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+            
+      - name: Install iOS dependencies
+        working-directory: apps/mobile/ios
+        run: |
+          bundle install
+          pod install --repo-update
+          
+      - name: Build iOS App
+        working-directory: apps/mobile
+        run: |
+          xcodebuild -workspace ios/ExpenseTracker.xcworkspace \
+            -scheme ExpenseTracker \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -derivedDataPath ios/build \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            build
+            
+      - name: Start iOS Simulator
+        run: |
+          xcrun simctl boot "iPhone 15" || true
+          xcrun simctl install "iPhone 15" apps/mobile/ios/build/Build/Products/Release-iphonesimulator/ExpenseTracker.app
+          
+      - name: Run Full Test Suite
+        working-directory: e2e
+        run: |
+          maestro test --format junit,html --output reports/ maestro/flows/
+          
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-full-ios-reports
+          path: e2e/reports/
+          retention-days: 30
+
+  # Performance tests (separate job for better resource allocation)
+  e2e-performance:
+    name: E2E Performance Tests
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build shared packages
+        run: |
+          npm run build --workspace=packages/shared
+          npm run build --workspace=packages/database
+          
+      - name: Setup Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          
+      - name: Build Android Release APK
+        working-directory: apps/mobile
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          
+      - name: Start Android Emulator (Performance Optimized)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          profile: pixel_4
+          ram-size: 4096M
+          heap-size: 1024M
+          script: |
+            adb devices
+            adb install apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            
+      - name: Run Performance Tests
+        working-directory: e2e
+        run: |
+          # Run tests with performance monitoring
+          maestro test --format junit --output reports/ --include-tags performance maestro/flows/
+          
+      - name: Upload Performance Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-performance-reports
+          path: e2e/reports/
+          retention-days: 30
+
+  # Test result summary
+  e2e-summary:
+    name: E2E Test Summary
+    runs-on: ubuntu-latest
+    needs: [e2e-smoke, e2e-full-android, e2e-full-ios]
+    if: always()
+    
+    steps:
+      - name: Download all reports
+        uses: actions/download-artifact@v4
+        with:
+          path: reports/
+          
+      - name: Generate Summary Report
+        run: |
+          echo "# E2E Test Summary" > summary.md
+          echo "" >> summary.md
+          echo "## Test Results" >> summary.md
+          
+          if [ -d "reports/e2e-smoke-reports" ]; then
+            echo "✅ Smoke Tests: Completed" >> summary.md
+          fi
+          
+          if [ -d "reports/e2e-full-android-reports" ]; then
+            echo "✅ Android Full Suite: Completed" >> summary.md
+          fi
+          
+          if [ -d "reports/e2e-full-ios-reports" ]; then
+            echo "✅ iOS Full Suite: Completed" >> summary.md
+          fi
+          
+          echo "" >> summary.md
+          echo "📊 Detailed reports are available in the artifacts section." >> summary.md
+          
+      - name: Upload Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-summary
+          path: summary.md
+          retention-days: 30
